@@ -1,0 +1,9 @@
+{
+  "name": "test",
+  "authors": [
+    "Sam Zagrobelny <Samuel.Zagrobelny@dayautomation.com>"
+  ],
+  "dependencies": {
+    "jade": "^1.11.0"
+  }
+}

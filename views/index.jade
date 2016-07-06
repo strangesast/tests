@@ -1,0 +1,22 @@
+extends layout
+
+block content
+  form#object-form(action='/', method='post')
+    input(type='hidden', name='version', value=0)
+    div
+      label(for='firstname-field') First:
+      input#firstname-field(type='text', name='name[first]')
+    div
+      label(for='lastname-field') Last:
+      input#lastname-field(type='text', name='name[last]')
+    div
+      button#object-form-submit(type='submit') Submit
+
+  div#object-container
+
+block scripts
+  script(src='/components/jade/jade.js')
+  script(src='/components/jade/runtime.js')
+  script(src='/templates/object.js')
+  script(src='/javascripts/names.js')
+  script(src='/javascripts/index.js')
