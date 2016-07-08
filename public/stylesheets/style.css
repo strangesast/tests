@@ -3,6 +3,13 @@ body {
   font: 14px "Lucida Grande", Helvetica, Arial, sans-serif;
 }
 
+.inner::after {
+  content: " (" attr(percent) ")";
+}
+.inner.done::after {
+  content: " (100)";
+}
+
 a {
   color: #00B7FF;
 }
