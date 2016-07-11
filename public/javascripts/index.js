@@ -1,120 +1,110 @@
-//const SOCKURL = 'ws:' + window.location.origin.slice(window.location.protocol.length) + '/sockets';
-//var socket = new WebSocket(SOCKURL);
+// {
+//   id : {
+//     expires: <Date>,
+//     progress: <func>,
+//     callback: <func>
+//   }
+// }
 
-var lastid = 0;
-var queue = {};
-var timeoutRequest;
 
-// ~= socket.send || worker.postMessage
-var send = function(data) {
-  setTimeout(function() {
-    setInterval(function() {
-      receive({
-        message: {
-          received: data,
-          result: 'ok'
-        },
-        complete: false,
-        id: data.id
-      });
-    }, 100);
-  }, 2000);
-};
+// message, location, method, header
+// params = {method:, header:}
 
-// ~= socket.onmessage || worker.onmessage
-var receive = function(data) {
-  var id = data.id;
-  // hopefully an unnecessary check
-  if(queue.hasOwnProperty(id)) {
-    if(data.complete == true) { // finished
-      queue[id].callback(Promise.resolve(data.message)); // only expose 'message' to sender
-      delete queue[id]; // done with it, remove it
-      checkTimeout(); // it may have had a timeout
-
-    } else { // not finished (progress)
-      if(typeof queue[id].progress == 'function') queue[id].progress(Promise.resolve(data.message));
+var Messenger = {
+  lastid: 0,
+  queue: {},
+  pendingTimeout: null,
+  init: function(ob, transport) {
+    var _this = this;
+    ob.addEventListener('message', function(e) {
+      _this.receive(JSON.parse(e.data));
+    });
+    this.transport = transport || {
+      send: function(stuff) {
+        ob.send(JSON.stringify(stuff));
+      }
     }
-  } else { // was already removed from queue, may have been timeout, finally responded
-    //throw new Error('Already removed from queue');
-    console.log('probably timeout');
-  }
+  },
+  send: function(message, path, params, progress, timeout) {
+    var _this = this;
+    var id = _this.lastid++;
+    var expires = timeout != null ? Date.now() + timeout : undefined;
+    var method = (params && params.method != null) ? params.method : undefined;
+    console.log('expires: ' + expires);
+    return new Promise(function(resolve, reject) {
+      _this.queue[id] = {callback: resolve, progress: progress, expires: expires};
+      // might also be useful to send expires to server
+      _this.transport.send({data: message, path: path, method: method, id: id});
+      _this.updateTimeout();
+    });
+  },
+  // set new setTimeout for timeout
+  updateTimeout: function() {
+    clearTimeout(this.pendingTimeout);
+    var _this = this;
+    var ids = Object.keys(this.queue);
+    var timeouts = ids.map((a)=>isNaN(_this.queue[a].expires) ? Infinity : _this.queue[a].expires-Date.now());
+    var min = Math.min.apply(null, timeouts);
+    if(min < Infinity) {
+      var i = timeouts.indexOf(min);
+      var cb = this.queue[i].callback;
+      this.pendingTimeout = setTimeout(function() {
+        cb(Promise.reject('timeout reached'));
+        delete _this.queue[i];
+        _this.updateTimeout();
+      }, Math.max(min, 0));
+    }
+  },
+  receive: function(resp) {
+    if(this.queue.hasOwnProperty(resp.id)) {
+      var ob = this.queue[resp.id];
+      if(resp.complete) {
+        ob.callback(Promise.resolve(resp.data));
+        delete this.queue[resp.id]; // done, remove from queue
+        this.updateTimeout();
+
+      } else {
+        if(typeof ob.progress == 'function') ob.progress(Promise.resolve(resp.data));
+      }
+
+    } else {
+      console.warn('id (' + resp.id + ') already removed from queue or was never there');
+    }
+  },
+  transport: null
 };
 
-var checkTimeout = function() {
-  // setTimeout to earliest timeout, or just clear it if there is none
-  clearTimeout(timeoutRequest);
-  var keys = Object.keys(queue);
-  var timeouts = keys.map((i)=>queue[i].expires);
-  var nextTimeout = timeouts.reduce((a, b)=>a==null ? b : (b == null ? a : Math.min(a,b)), null);
-  if(nextTimeout != null) {
-    console.log('nextTimeout: ');
-    console.log(nextTimeout)
-
-    timeoutRequest = setTimeout(function() {
-      timeout(keys[timeouts.indexOf(nextTimeout)]);
-      checkTimeout();
-    }, Math.max(nextTimeout - Date.now(), 0));
-  }
-};
-
-// pass promise to callbackFunc for resolve / reject
-// progressFunc optional
-var add = function(message, callbackFunc, progressFunc, timeoutAmt) {
-  var id = lastid++;
-  var expires;
-  if(timeoutAmt!=null) {
-    expires = Date.now() + timeoutAmt;
-  }
-  queue[id] = {
-    callback: callbackFunc, progress: progressFunc, expires: expires, timeout: timeout
-  }
-  send({id: id, message: message});
-  checkTimeout();
-  return id;
-};
-
-cnt = 0;
-var timeout = function(i) {
-  cnt++
-  console.log('timeout called ' + cnt);
-  var message = 'timeout ' + queue[i].timeout + ' reached';
-  var error = new Error(message);
-  error.type = 'timeout';
-  queue[i].callback(Promise.reject(error));
-  delete queue[i] // remove from queue
-};
-
-var completeCallback = function(prom) {
-  prom.then(function(result) {
-    console.log('success');
-    console.log(result);
-  }, function(err) {
-    console.log('error: ' + err.message);
+var m = Object.create(Messenger);
+var url = 'ws:' + window.location.origin.slice(window.location.protocol.length);
+socket = new WebSocket(url);
+socket.addEventListener('open', function() {
+  console.log('connected at ' + url);
+  m.init(socket);
+  // this will occasionally fail
+  m.send({message: 'hello!'}, null, {}, null, 1020).then(function(response) {
+    console.log('response');
+    console.log(response)
+  }).catch(function(err) {
+    console.warn(err);
   });
-};
-var progressCallback = function(prom) {
-  console.log('progress');
-  prom.then(function(result) {
-    console.log('progress success');
-  }, function(err) {
-    console.log('progress error');
+});
+
+/*
+var m2 = Object.create(Messenger);
+m2.init(worker.port, function(ob, transport) {
+  var _this = this;
+  ob.addEventListener('message', function(e) {
+    _this.receive(JSON.parse(e.data));
   });
-}
-setTimeout(function() {
-  add('hello, world!'
-  , completeCallback
-  , progressCallback
-  , 1000);
-}, 0);
-setTimeout(function() {
-  add('another hello, world!'
-  , completeCallback
-  , progressCallback
-  , 0);
-}, 0);
-setTimeout(function() {
-  add('this one works'
-  , completeCallback
-  , progressCallback
-  , 10000);
-}, 100);
+  ob.start();
+  this.transport = transport || {
+    send: ob.postMessage
+  }
+});
+
+var worker = new SharedWorker('javascripts/echoworker.js');
+worker.port.addEventListener('message', function(e) {
+  console.log(e.data);
+});
+worker.port.start();
+*/

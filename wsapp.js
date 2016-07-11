@@ -17,6 +17,7 @@ module.exports = function(server) {
   var wss = new WebSocketServer({server: server});
   wss.on('connection', function(ws) {
     var sender = senderFactory(ws);
+    console.log('connection! (' + wss.clients.length + ' clients)');
 
     ws.on('message', function(message) {
       var data = parse(message);
@@ -25,10 +26,10 @@ module.exports = function(server) {
       setTimeout(function() {
         sender({
           id: id,
-          result: {
-            message: 'ok',
-            complete: true
+          data: {
+            message: 'ok'
           },
+          complete: true,
           sent: data
         });
       }, 1000);
