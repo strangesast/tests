@@ -1,5 +1,7 @@
 var ports = [];
 
+var socket
+
 self.addEventListener('connect', function(evt) {
   var port = evt.ports[0];
 
