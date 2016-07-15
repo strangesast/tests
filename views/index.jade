@@ -1,13 +1,54 @@
 extends layout
 
+block head
+
 block content
-  button#trigger(type='button') Add
-  code#messages
-  div#outer
+  form#new-player(action='/data/player', method='post')
+    h2 New Player
+    // player definition
+    fieldset.form-group
+      label(for='player-name-first') First Name
+      input#player-name-first(name='player[name][first]', type='text', value='Sam').form-control
+      label(for='player-name-last') Last Name
+      input#player-name-last(name='player[name][last]', type='text', value='Zagrobelny').form-control
+
+    // team info
+    fieldset.form-group
+      label(for='player-team') Team
+      input#player-team(name='player[team]', list='teams', value='unattached').form-control
+      
+    if teams && teams.length > 0
+      datalist#teams
+        each team in teams
+          option(value=team.id) #{team.name}
+
+    button(type="submit").btn.btn-primary Submit
+
+  form#new-game(action='/data/game', method='game')
+    h2 New Game
+    fieldset.form-group
+      label(for='game-type') Type
+      select#game-type(name='game[type]').form-control
+        option(value='volleyball') Volleyball
+        option(value='frisbe') Frisbe
+        option(value='soccer') Soccer
+        option(value='other') Other
+      label(for='game-name') Name
+      input#game-name(name='game[name]', type='text').form-control
+    button(type="submit").btn.btn-primary Submit
+
+  form#new-team(action='/data/team', method='team')
+    h2 New Team
+    fieldset.form-group
+      label(for='team-name') Name
+      input(name='team[name]', type='text').form-control
+    button(type="submit").btn.btn-primary Submit
+      
 
 block scripts
   script(src='/components/jade/jade.js')
   script(src='/components/jade/runtime.js')
   script(src='/templates/object.js')
   script(src='/javascripts/names.js')
+  script(src='/javascripts/Messenger.js')
   script(src='/javascripts/index.js')

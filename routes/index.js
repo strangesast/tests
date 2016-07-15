@@ -15,4 +15,10 @@ router.post('/', upload.single(), function(req, res, next) {
   return res.json(ob);
 });
 
+router.post('/data/:object', upload.single(), function(req, res, next) {
+  var object = req.params.object;
+
+  return res.json(object);
+});
+
 module.exports = router;

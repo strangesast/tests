@@ -4,6 +4,8 @@
     "Sam Zagrobelny <Samuel.Zagrobelny@dayautomation.com>"
   ],
   "dependencies": {
-    "jade": "^1.11.0"
+    "jade": "^1.11.0",
+    "bootstrap": "v4.0.0-alpha.2",
+    "tether": "^1.3.3"
   }
 }

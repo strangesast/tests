@@ -1,11 +1,15 @@
 doctype html
 html
   head
-    title= title
+    link(rel='stylesheet', href='/components/tether/dist/css/tether.css')
+    link(rel='stylesheet', href='/components/bootstrap/dist/css/bootstrap.css')
     link(rel='stylesheet', href='/stylesheets/style.css')
     block head
 
   body
     block content
 
+    script(src='/components/jquery/dist/jquery.js')
+    script(src='/components/tether/dist/js/tether.js')
+    script(src='/components/bootstrap/dist/js/bootstrap.js')
     block scripts
